@@ -472,14 +472,14 @@ static void Alarm_Mode(void)
 
 uint8_t Test_Mode(void)
 {
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET);
     HAL_Delay(500);
     if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) != GPIO_PIN_SET)
     {
         Alarm_Mode();
     }
 
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET);
     HAL_Delay(500);
     if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) != GPIO_PIN_RESET)
     {
