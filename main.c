@@ -452,7 +452,50 @@ void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
 
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) 
 {
-	Average_Temp_ADC = float_filter2(DMA_buf[0]); //function float_filter
+	Average_Temp_ADC = float_filter2(DMA_buf[0]);
+}
+
+static void Alarm_Mode(void)
+{
+    while (1)
+    {
+        HAL_IWDG_Refresh(&hiwdg);
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+        HAL_Delay(50);
+        HAL_IWDG_Refresh(&hiwdg);
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+        HAL_Delay(50);
+    }
+}
+
+uint8_t Test_Mode(void)
+{
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_SET);
+    HAL_Delay(500);
+    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) != GPIO_PIN_SET)
+    {
+        Alarm_Mode();
+    }
+
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_RESET);
+    HAL_Delay(500);
+    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) != GPIO_PIN_RESET)
+    {
+        Alarm_Mode();
+    }
+
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+    HAL_Delay(1000);
+
+    uint8_t pa2_state = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2);
+
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+
+    return (pa2_state == GPIO_PIN_SET) ? 1 : 0;
 }
 
 void Gas_Voltage(void)
@@ -635,7 +678,7 @@ int main(void)
 	HAL_TIM_Base_Start_IT(&htim16);
 	HAL_TIM_Base_Start_IT(&htim3);
 	
-	
+	uint8_t calibration_needed = Test_Mode();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -955,12 +998,12 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PA6 */
-  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 	
-	GPIO_InitStruct.Pin = GPIO_PIN_1 | GPIO_PIN_2;
+  GPIO_InitStruct.Pin = GPIO_PIN_1;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
