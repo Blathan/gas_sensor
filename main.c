@@ -543,8 +543,8 @@ void Calibration_Mode(void)
             }
             uint32_t gas_cal = sum / 16;
             flash_unlock();
-            flash_erase_page(TEMPERATURE_ADC_ADDRESS);
-            flash_write(TEMPERATURE_ADC_ADDRESS, gas_cal);
+            flash_erase_page(GAS_CALIBRATION);
+            flash_write(GAS_CALIBRATION, gas_cal);
             flash_lock();
 
             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
