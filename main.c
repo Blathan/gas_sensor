@@ -92,7 +92,7 @@ uint32_t Ver_Data = 0x070213; // Data create of Firmware
 #define UNIQ_ID_SENSOR_ADDRESS   					((uint32_t)0x08007C0C)
 #define CODE_SENSOR_ADDRESS   						((uint32_t)0x08007C10)
 
-#define TEMPERATURE_ADC_ADDRESS  			((uint32_t)0x08007D00)
+#define GAS_CALIBRATION  			((uint32_t)0x08007D00)
 
 #define LimitWeight_plus_ADDRESS  				((uint32_t)0x08007E08)
 
@@ -488,14 +488,72 @@ uint8_t Test_Mode(void)
 
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
-    HAL_Delay(1000);
-
-    uint8_t pa2_state = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2);
+	uint8_t pa2_state = GPIO_PIN_RESET;
+    uint32_t tick_start = HAL_GetTick();
+    while ((HAL_GetTick() - tick_start) <= 1000)
+    {
+        if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == GPIO_PIN_SET)
+        {
+            pa2_state = GPIO_PIN_SET;
+        }
+    }
 
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
 
     return (pa2_state == GPIO_PIN_SET) ? 1 : 0;
+}
+
+void Calibration_Mode(void)
+{
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_SET);
+
+    uint32_t warmup_start = HAL_GetTick();
+    while ((HAL_GetTick() - warmup_start) < 120000)
+    {
+        HAL_IWDG_Refresh(&hiwdg);
+
+        uint32_t phase = (HAL_GetTick() - warmup_start) % 2000;
+        if (phase < 1000)
+        {
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+        }
+        else
+        {
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+        }
+    }
+
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+
+    while (1)
+    {
+        HAL_IWDG_Refresh(&hiwdg);
+
+        if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == GPIO_PIN_RESET)
+        {
+            uint32_t sum = 0;
+            for (uint8_t i = 0; i < 16; i++)
+            {
+                sum += DMA_buf[1];
+                HAL_Delay(10);
+            }
+            uint32_t gas_cal = sum / 16;
+            flash_unlock();
+            flash_erase_page(TEMPERATURE_ADC_ADDRESS);
+            flash_write(TEMPERATURE_ADC_ADDRESS, gas_cal);
+            flash_lock();
+
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+            HAL_Delay(1000);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+            return;
+        }
+    }
 }
 
 void Gas_Voltage(void)
